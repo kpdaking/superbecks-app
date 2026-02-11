@@ -1,0 +1,120 @@
+.page{
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 18px 14px 40px;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+}
+
+.topBar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding: 14px 16px;
+  border-radius: 22px;
+  background: linear-gradient(90deg,#6a1bb6,#4d148c);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+.logoText{
+  font-weight: 900;
+  font-size: 20px;
+  letter-spacing: 1px;
+}
+
+.pill{
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.08);
+  font-weight: 800;
+}
+
+.hero{
+  margin-top: 14px;
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  text-align:center;
+}
+
+.heroTitle{
+  margin: 0;
+  font-size: 26px;
+  font-weight: 900;
+}
+
+.section{
+  margin-top: 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.05);
+  overflow:hidden;
+}
+
+.sectionHeader{
+  padding: 12px;
+  font-weight: 900;
+  background: linear-gradient(90deg,#6a1bb6,#6a1bb650);
+}
+
+.grid{
+  padding: 14px;
+  display:grid;
+  grid-template-columns: repeat(4,1fr);
+  gap:12px;
+}
+
+.tile{
+  border-radius:16px;
+  padding:14px;
+  background: rgba(255,255,255,0.08);
+  border:1px solid rgba(255,255,255,0.15);
+}
+
+.tileLabel{
+  font-weight:900;
+  font-size:18px;
+}
+
+.tileValue{
+  margin-top:6px;
+  font-size:22px;
+  font-weight:900;
+  color:#7CFFCF;
+}
+
+.totalPill{
+  margin:14px;
+  padding:14px;
+  border-radius:999px;
+  background: linear-gradient(90deg,#f7d34a,#ff8a00);
+  color:#1a1a1a;
+  font-weight:900;
+  text-align:center;
+}
+
+.list{
+  padding:14px;
+  display:grid;
+  gap:10px;
+}
+
+.row{
+  display:grid;
+  grid-template-columns:1fr auto;
+  padding:12px;
+  border-radius:14px;
+  background: rgba(255,255,255,0.08);
+  border:1px solid rgba(255,255,255,0.15);
+}
+
+.badge{
+  background:#f7d34a;
+  color:#000;
+  padding:6px 12px;
+  border-radius:999px;
+  font-weight:900;
+}
+

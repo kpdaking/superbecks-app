@@ -1,0 +1,213 @@
+.page {
+  min-height: 100vh;
+  padding: 18px 16px 40px;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  color: #fff;
+  background: radial-gradient(1200px 600px at 50% -200px, rgba(170, 70, 255, 0.25), transparent 60%),
+    radial-gradient(900px 500px at 10% 20%, rgba(110, 0, 255, 0.2), transparent 60%),
+    #07070b;
+}
+
+.topBar {
+  max-width: 1100px;
+  margin: 0 auto 14px;
+  border-radius: 18px;
+  padding: 14px 16px;
+  background: linear-gradient(90deg, rgba(160, 60, 255, 0.55), rgba(85, 30, 155, 0.55));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}
+
+.logo {
+  height: 40px;
+  width: 40px;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.18);
+  object-fit: cover;
+}
+
+.pill {
+  padding: 9px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 800;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.wrap {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  gap: 14px;
+}
+
+.section {
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.sectionHeader {
+  padding: 12px 14px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  background: linear-gradient(90deg, rgba(160, 60, 255, 0.8), rgba(85, 30, 155, 0.75));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.sectionBody {
+  padding: 14px;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.panelGrid {
+  display: grid;
+  gap: 12px;
+}
+
+.menuGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.itemBtn {
+  text-align: left;
+  border-radius: 16px;
+  padding: 12px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.itemBtn:hover {
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.price {
+  margin-top: 6px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.card {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.22);
+  padding: 14px;
+}
+
+.error {
+  border: 1px solid rgba(255, 0, 0, 0.45);
+  background: rgba(255, 0, 0, 0.08);
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-weight: 800;
+}
+
+.rowBtn {
+  width: 100%;
+  text-align: left;
+  border-radius: 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  cursor: pointer;
+}
+
+.rowBtn:hover {
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.rowLine {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.small {
+  color: rgba(255,255,255,0.65);
+  font-size: 12px;
+}
+
+.pillBtn {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.pillBtnActive {
+  border-color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.cta {
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: linear-gradient(90deg, #ffcc33, #ff7a00);
+  color: #141414;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.cta:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.clearBtn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 11px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+@media (max-width: 920px) {
+  .grid2 {
+    grid-template-columns: 1fr;
+  }
+  .menuGrid {
+    grid-template-columns: 1fr;
+  }
+}
