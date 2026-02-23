@@ -242,7 +242,9 @@ export default function OwnerDashboard() {
       return filteredOrders.filter((o) => o.status !== "VOIDED");
     }, [filteredOrders]);
 
-
+    const salesLines = useMemo(() => {
+      return lines.filter((l) => salesOrderIdSet.has(l.order_id));
+    }, [lines, salesOrderIdSet]);
 
 
   const paymentSplit = useMemo(() => {
@@ -275,7 +277,7 @@ export default function OwnerDashboard() {
   
   const salesByBranch = useMemo(() => {
     const map = new Map<string, { total: number; count: number }>();
-    for (const o of orders) {
+    for (const o of salesOrders) {
       const cur = map.get(o.branch_id) ?? { total: 0, count: 0 };
       cur.total += Number(o.total_amount || 0);
       cur.count += 1;
@@ -289,11 +291,11 @@ export default function OwnerDashboard() {
         name: branchNameById.get(branch_id) ?? branch_id,
       }))
       .sort((a, b) => b.total - a.total);
-  }, [orders, branchNameById]);
+  }, [salesOrders, branchNameById]);
 
   const topItems = useMemo(() => {
     const map = new Map<string, { name: string; qty: number; amount: number }>();
-    for (const l of lines) {
+    for (const l of salesLines) {
       const name = l.menu_items?.name ?? "Unknown";
       const key = l.menu_item_id;
       const cur = map.get(key) ?? { name, qty: 0, amount: 0 };
@@ -304,7 +306,7 @@ export default function OwnerDashboard() {
     return Array.from(map.values())
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 10);
-  }, [lines]);
+  }, [salesLines]);
 
   
   const orderLinesForSelectedOrder = useMemo(() => {
