@@ -6,6 +6,7 @@ import styles from "./cashier.module.css";
 import { confirmAndLogout } from "@/lib/logout";
 
 
+
 type MenuItem = {
   id: string;
   name: string;
@@ -41,6 +42,7 @@ export default function CashierPage() {
   const [payment, setPayment] = useState<"CASH" | "GCASH">("CASH");
   const [saving, setSaving] = useState(false);
   const [branchId, setBranchId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   // Load profile + menu
   useEffect(() => {
@@ -51,7 +53,8 @@ export default function CashierPage() {
           setErrorMsg("Not a cashier account.");
           return;
         }
-        setBranchId(p.branchId);
+        setBranchId(p.branchId); 
+        setUserId(p.userId);
 
         const { data, error } = await supabase
           .from("menu_items")
@@ -122,7 +125,7 @@ export default function CashierPage() {
         .from("orders")
         .insert({
           branch_id: branchId,
-          created_by: user.id,
+          created_by: userId,
           payment_type: payment,
           status: "NEW",
           total_amount: totalAmount,
