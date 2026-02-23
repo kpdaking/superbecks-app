@@ -9,6 +9,7 @@ import { confirmAndLogout } from "@/lib/logout";
 type Branch = { id: string; name: string };
 
 type Order = {
+  replaced_by: any;
   id: string;
   branch_id: string;
   created_at: string;
@@ -503,56 +504,65 @@ function repAdd(menuItemId: string) {
 
 const replaceTotal = replaceLines.reduce((sum, l) => sum + l.unit_price * l.qty, 0);
 
-async function saveReplacementDraft() {
-  if (!replaceNewId) return;
-  setReplaceSaving(true);
-  try {
-    // 1) delete existing lines for new order
-    const { error: e1 } = await supabase.from("order_lines").delete().eq("order_id", replaceNewId);
-    if (e1) throw new Error(e1.message);
+// remove this save draft for now
+//async function saveReplacementDraft() {
+//  if (!replaceNewId) return;
+//  setReplaceSaving(true);
+//  try {
+//    // 1) delete existing lines for new order
+//    const { error: e1 } = await supabase.from("order_lines").delete().eq("order_id", replaceNewId);
+//    if (e1) throw new Error(e1.message);
 
     // 2) insert new lines
-    const payload = replaceLines.map((l) => ({
-      order_id: replaceNewId,
-      menu_item_id: l.menu_item_id,
-      qty: l.qty,
-      unit_price: l.unit_price,
-      line_total: l.unit_price * l.qty,
-    }));
+//    const payload = replaceLines.map((l) => ({
+//      order_id: replaceNewId,
+//      menu_item_id: l.menu_item_id,
+//      qty: l.qty,
+//      unit_price: l.unit_price,
+//      line_total: l.unit_price * l.qty,
+//    }));
 
-    if (payload.length > 0) {
-      const { error: e2 } = await supabase.from("order_lines").insert(payload);
-      if (e2) throw new Error(e2.message);
-    }
+//    if (payload.length > 0) {
+//      const { error: e2 } = await supabase.from("order_lines").insert(payload);
+//      if (e2) throw new Error(e2.message);
+//    }
 
     // 3) update order total
-    const { error: e3 } = await supabase
-      .from("orders")
-      .update({ total_amount: replaceTotal })
-      .eq("id", replaceNewId);
-    if (e3) throw new Error(e3.message);
+//    const { error: e3 } = await supabase
+//      .from("orders")
+//      .update({ total_amount: replaceTotal })
+//      .eq("id", replaceNewId);
+//    if (e3) throw new Error(e3.message);
 
-    alert("✅ Draft saved.");
-  } catch (err: any) {
-    alert(err?.message ?? "Save failed");
-  } finally {
-    setReplaceSaving(false);
-  }
-}
+//    alert("✅ Draft saved.");
+//  } catch (err: any) {
+//    alert(err?.message ?? "Save failed");
+//  } finally {
+//    setReplaceSaving(false);
+//  }
+// }
 
 async function finalizeReplacement() {
-  if (!replaceOldId || !replaceNewId) return;
+  if (!replaceOldId) return;
 
-  if (voidReason.trim().length < 3) {
+  // If replacement is empty, treat as FULL VOID (no new order needed)
+  if (replaceLines.length === 0) {
+    await voidOnly();
+    return;
+  }
+
+  // replacement path needs new order
+  if (!replaceNewId) return;
+
+  const reason = voidReason.trim();
+  if (reason.length < 3) {
     alert("Please enter a void reason (at least 3 characters).");
     return;
   }
-  if (replaceLines.length === 0) {
-    alert("Replacement cannot be empty. Add at least 1 item.");
-    return;
-  }
 
-  const ok = window.confirm("Finalize replacement? This will VOID the old order and mark the new one as PAID.");
+  const ok = window.confirm(
+    "Finalize replacement? This will VOID the old order and keep the new order as the replacement."
+  );
   if (!ok) return;
 
   setReplaceSaving(true);
@@ -561,28 +571,49 @@ async function finalizeReplacement() {
     const ownerId = sess.session?.user?.id;
     if (!ownerId) throw new Error("Login required");
 
-    // Always save draft before finalizing
-    await saveReplacementDraft();
+    // 1) overwrite lines for new order (no draft; this IS the finalize)
+    const { error: delErr } = await supabase
+      .from("order_lines")
+      .delete()
+      .eq("order_id", replaceNewId);
+    if (delErr) throw new Error(delErr.message);
 
-    // 1) new order -> PAID
-    const { error: e1 } = await supabase
+    const payload = replaceLines.map((l) => ({
+      order_id: replaceNewId,
+      menu_item_id: l.menu_item_id,
+      qty: l.qty,
+      unit_price: l.unit_price,
+      line_total: l.unit_price * l.qty,
+    }));
+
+    const computedTotal = payload.reduce((sum, x) => sum + x.line_total, 0);
+
+    const { error: insErr } = await supabase.from("order_lines").insert(payload);
+    if (insErr) throw new Error(insErr.message);
+
+    // 2) update new order total (and status ONLY if your enum supports it)
+    // safest: leave status alone (likely already "NEW")
+    const { error: updNewErr } = await supabase
       .from("orders")
-      .update({ status: "PAID" })
+      .update({
+        total_amount: computedTotal,
+        // status: "NEW", // only set this if your enum includes NEW (it seems it does)
+      })
       .eq("id", replaceNewId);
-    if (e1) throw new Error(e1.message);
+    if (updNewErr) throw new Error(updNewErr.message);
 
-    // 2) old order -> VOIDED
-    const { error: e2 } = await supabase
+    // 3) old order -> VOIDED + link to new
+    const { error: updOldErr } = await supabase
       .from("orders")
       .update({
         status: "VOIDED",
         voided_at: new Date().toISOString(),
         voided_by: ownerId,
-        void_reason: voidReason.trim(),
+        void_reason: reason,
         replaced_by: replaceNewId,
       })
       .eq("id", replaceOldId);
-    if (e2) throw new Error(e2.message);
+    if (updOldErr) throw new Error(updOldErr.message);
 
     alert("✅ Replacement finalized.");
 
@@ -596,6 +627,53 @@ async function finalizeReplacement() {
     await refreshAll();
   } catch (err: any) {
     alert(err?.message ?? "Finalize failed");
+  } finally {
+    setReplaceSaving(false);
+  }
+}
+async function voidOnly() {
+  if (!replaceOldId) return;
+
+  const reason = voidReason.trim();
+  if (reason.length < 3) {
+    alert("Please enter a void reason (at least 3 characters).");
+    return;
+  }
+
+  const ok = window.confirm("Void this entire order? This cannot be undone.");
+  if (!ok) return;
+
+  setReplaceSaving(true);
+  try {
+    const { data: sess } = await supabase.auth.getSession();
+    const ownerId = sess.session?.user?.id;
+    if (!ownerId) throw new Error("Login required");
+
+    const { error: e2 } = await supabase
+      .from("orders")
+      .update({
+        status: "VOIDED",
+        voided_at: new Date().toISOString(),
+        voided_by: ownerId,
+        void_reason: reason,
+        replaced_by: null, // important: it's a pure void
+      })
+      .eq("id", replaceOldId);
+
+    if (e2) throw new Error(e2.message);
+
+    alert("✅ Order voided.");
+
+    // exit replace mode
+    setReplaceMode(false);
+    setReplaceOldId(null);
+    setReplaceNewId(null);
+    setReplaceLines([]);
+    setVoidReason("");
+
+    await refreshAll();
+  } catch (err: any) {
+    alert(err?.message ?? "Void failed");
   } finally {
     setReplaceSaving(false);
   }
@@ -1090,15 +1168,46 @@ function cancelReplacement() {
                           }}
                         >
                           <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-                            <div>
-                              <div style={{ fontWeight: 900 }}>
-                                {branchNameById.get(o.branch_id) ?? o.branch_id} • {o.payment_type}
-                              </div>
-                              <div style={{ color: "#aaa", fontSize: 12 }}>
-                                {new Date(o.created_at).toLocaleString()} • {o.id.slice(0, 8)}
-                              </div>
-                            </div>
-                            <div style={{ fontWeight: 900 }}>{fmtMoney(o.total_amount)}</div>
+                            {/* LEFT SIDE */}
+                                <div>
+
+                                  {/* branch + payment */}
+                                  <div style={{ fontWeight: 900 }}>
+                                    {branchNameById.get(o.branch_id) ?? o.branch_id} • {o.payment_type}
+
+                                    {/* 🔴 VOID badge */}
+                                    {o.status === "VOIDED" && (
+                                      <span style={{
+                                        marginLeft: 8,
+                                        background: "#ff4d4f",
+                                        padding: "2px 6px",
+                                        borderRadius: 6,
+                                        fontSize: 11,
+                                        fontWeight: 700
+                                      }}>
+                                        VOIDED
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* time + id */}
+                                  <div style={{ color: "#aaa", fontSize: 12 }}>
+                                    {new Date(o.created_at).toLocaleString()} • {o.id.slice(0,8)}
+                                  </div>
+
+                                  {/* replacement reference */}
+                                  {o.replaced_by && (
+                                    <div style={{ color: "#888", fontSize: 11 }}>
+                                      Replaced by: {String(o.replaced_by).slice(0,8)}
+                                    </div>
+                                  )}
+
+                                </div>
+
+                                {/* RIGHT SIDE TOTAL */}
+                                <div style={{ fontWeight: 900 }}>
+                                  {fmtMoney(o.total_amount)}
+                                </div>
                           </div>
                         </button>
                       );
@@ -1217,7 +1326,7 @@ function cancelReplacement() {
                       />
 
                       <div style={{ display:"flex", gap:10, marginTop:10 }}>
-                        <button onClick={saveReplacementDraft}>Save Draft</button>
+                        <button onClick={voidOnly}>Void Order</button>
                         <button onClick={finalizeReplacement}>Finalize Replacement</button>
                       </div>
                     </div>
