@@ -248,12 +248,12 @@ export default function OwnerDashboard() {
   const paymentSplit = useMemo(() => {
     let cash = 0,
       gcash = 0;
-    for (const o of orders) {
+    for (const o of salesOrders) {
       if (o.payment_type === "CASH") cash += Number(o.total_amount || 0);
       else if (o.payment_type === "GCASH") gcash += Number(o.total_amount || 0);
     }
     return { cash, gcash };
-  }, [orders]);
+  }, [salesOrders]);
    
  
   //const totalSales = useMemo(() => orders.reduce((s, o) => s + Number(o.total_amount || 0), 0), [orders]);
