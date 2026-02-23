@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import styles from "./cashier.module.css";
+import { confirmAndLogout } from "@/lib/logout";
 
 
 type MenuItem = {
@@ -162,6 +163,14 @@ export default function CashierPage() {
 
       <div className={styles.pill}>
         Branch: {branchId ? "Assigned" : "Not assigned"}
+
+         <button
+          className={styles.pillBtn}
+          onClick={() => confirmAndLogout("Log out cashier?")}
+          style={{ fontWeight: 900 }}
+          >
+          Logout
+          </button>
       </div>
     </div>
 

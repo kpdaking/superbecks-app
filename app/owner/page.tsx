@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import "./ui.css";
+import { confirmAndLogout } from "@/lib/logout";
 
 type Branch = { id: string; name: string };
 
@@ -37,6 +38,10 @@ async function getMyProfile() {
   if (profErr) throw new Error(profErr.message);
   return prof as { role: string };
 }
+
+
+
+
 
 /**
  * We treat UI dates as "Philippines time" (UTC+8), regardless of the PC timezone.
@@ -157,6 +162,58 @@ export default function OwnerDashboard() {
     branches.forEach((b) => m.set(b.id, b.name));
     return m;
   }, [branches]);
+
+
+  // --- Password reset UI state (Owner only) ---
+  const [pwCashier, setPwCashier] = useState("");
+  const [pwOwner, setPwOwner] = useState("");
+  const [pwMsg, setPwMsg] = useState<string>("");
+  const [pwSaving, setPwSaving] = useState(false);
+
+  async function resetPassword(mode: "cashier" | "owner", newPassword: string) {
+    // confirm
+    const ok = window.confirm(
+      mode === "cashier"
+        ? "Reset CASHIER password? Cashier will need to log in again."
+        : "Change OWNER password (your account)? You may need to log in again."
+    );
+    if (!ok) return;
+
+    setPwMsg("");
+    setPwSaving(true);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error("Not logged in");
+
+      const res = await fetch("/api/admin/reset-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ mode, newPassword }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Reset failed");
+
+      setPwMsg(mode === "cashier" ? "✅ Cashier password updated." : "✅ Owner password updated.");
+
+      // clear inputs
+      if (mode === "cashier") setPwCashier("");
+      if (mode === "owner") setPwOwner("");
+    } catch (e: any) {
+      setPwMsg(`❌ ${e?.message ?? "Unknown error"}`);
+    } finally {
+      setPwSaving(false);
+    }
+  }
+
+
+
+
+
 
   const paymentSplit = useMemo(() => {
     let cash = 0,
@@ -470,6 +527,22 @@ export default function OwnerDashboard() {
       </div>
 
       <div className="pill">Range: {startDate} → {endDate}</div>
+
+      {/* RIGHT SIDE (Logout Button) */}
+    <button
+      onClick={() => confirmAndLogout("Log out of Owner Dashboard?")}
+      style={{
+      padding: "8px 14px",
+      borderRadius: 999,
+      border: "1px solid rgba(255,255,255,0.3)",
+      background: "rgba(0,0,0,0.25)",
+      color: "#fff",
+      fontWeight: 800,
+      cursor: "pointer"
+    }}
+  >
+    Logout
+  </button>
     </div>
 
     {/* Hero / Title */}
@@ -560,9 +633,95 @@ export default function OwnerDashboard() {
                 <div style={{ fontSize: 22, fontWeight: 900 }}>{fmtMoney(sumMtd.total)}</div>
                 <div style={{ color: "#888" }}>{sumMtd.count} orders</div>
               </div>
+    
             </div>
           </div>
         </div>
+
+          {/* Owner admin: Password reset */}
+          <div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 12 }}>
+            <div style={{ fontWeight: 900, marginBottom: 8 }}>Admin • Password Reset</div>
+
+            {pwMsg ? (
+              <div style={{ marginBottom: 10, padding: 10, border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12 }}>
+                {pwMsg}
+              </div>
+            ) : null}
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              {/* Reset cashier */}
+              <div style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, padding: 12 }}>
+                <div style={{ fontWeight: 800, marginBottom: 8 }}>Reset Cashier Password</div>
+                <input
+                  type="password"
+                  value={pwCashier}
+                  onChange={(e) => setPwCashier(e.target.value)}
+                  placeholder="New cashier password (min 8 chars)"
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 10,
+                    border: "1px solid rgba(255,255,255,0.18)",
+                    background: "rgba(0,0,0,0.35)",
+                    color: "#fff",
+                  }}
+                />
+                <button
+                  disabled={pwSaving || pwCashier.length < 8}
+                  onClick={() => resetPassword("cashier", pwCashier)}
+                  style={{
+                    marginTop: 10,
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 10,
+                    border: "1px solid rgba(255,255,255,0.25)",
+                    fontWeight: 900,
+                    opacity: pwSaving || pwCashier.length < 8 ? 0.6 : 1,
+                    cursor: pwSaving || pwCashier.length < 8 ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {pwSaving ? "SAVING..." : "RESET CASHIER PASSWORD"}
+                </button>
+              </div>
+
+              {/* Reset owner (self) */}
+              <div style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, padding: 12 }}>
+                <div style={{ fontWeight: 800, marginBottom: 8 }}>Change Owner Password</div>
+                <input
+                  type="password"
+                  value={pwOwner}
+                  onChange={(e) => setPwOwner(e.target.value)}
+                  placeholder="New owner password (min 8 chars)"
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 10,
+                    border: "1px solid rgba(255,255,255,0.18)",
+                    background: "rgba(0,0,0,0.35)",
+                    color: "#fff",
+                  }}
+                />
+                <button
+                  disabled={pwSaving || pwOwner.length < 8}
+                  onClick={() => resetPassword("owner", pwOwner)}
+                  style={{
+                    marginTop: 10,
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 10,
+                    border: "1px solid rgba(255,255,255,0.25)",
+                    fontWeight: 900,
+                    opacity: pwSaving || pwOwner.length < 8 ? 0.6 : 1,
+                    cursor: pwSaving || pwOwner.length < 8 ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {pwSaving ? "SAVING..." : "CHANGE OWNER PASSWORD"}
+                </button>
+              </div>
+            </div>
+          </div>
+
+        
 
         {/* Main KPIs */}
         <div className="section" style={{ marginTop: 16 }}>
