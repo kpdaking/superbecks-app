@@ -229,7 +229,18 @@ export default function OwnerDashboard() {
     }
   }
 
+    // 1) Orders list shown in UI (can include VOIDED)
+    const filteredOrders = useMemo(() => {
+      if (!selectedBranchId) return orders;
+      return orders
+        .filter((o) => o.branch_id === selectedBranchId)
+        .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+    }, [orders, selectedBranchId]);
 
+    // 2) Orders used for SALES computations (exclude VOIDED)
+    const salesOrders = useMemo(() => {
+      return filteredOrders.filter((o) => o.status !== "VOIDED");
+    }, [filteredOrders]);
 
 
 
@@ -243,9 +254,25 @@ export default function OwnerDashboard() {
     }
     return { cash, gcash };
   }, [orders]);
+   
+ 
+  //const totalSales = useMemo(() => orders.reduce((s, o) => s + Number(o.total_amount || 0), 0), [orders]);
+  
+ 
+  
 
-  const totalSales = useMemo(() => orders.reduce((s, o) => s + Number(o.total_amount || 0), 0), [orders]);
+  const totalSales = salesOrders.reduce((sum, o) => sum + Number(o.total_amount || 0),0 );
 
+  const cashSales = salesOrders
+    .filter(o => o.payment_type === "CASH")
+    .reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
+
+  const gcashSales = salesOrders
+    .filter(o => o.payment_type === "GCASH")
+    .reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
+
+
+  
   const salesByBranch = useMemo(() => {
     const map = new Map<string, { total: number; count: number }>();
     for (const o of orders) {
@@ -279,11 +306,7 @@ export default function OwnerDashboard() {
       .slice(0, 10);
   }, [lines]);
 
-  const filteredOrders = useMemo(() => {
-    if (!selectedBranchId) return orders;
-    return orders.filter((o) => o.branch_id === selectedBranchId).sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
-  }, [orders, selectedBranchId]);
-
+  
   const orderLinesForSelectedOrder = useMemo(() => {
     if (!selectedOrderId) return [];
     return lines.filter((l) => l.order_id === selectedOrderId);
@@ -543,25 +566,20 @@ const replaceTotal = replaceLines.reduce((sum, l) => sum + l.unit_price * l.qty,
 // }
 
 async function finalizeReplacement() {
-  if (!replaceOldId) return;
+  if (!replaceOldId || !replaceNewId) return;
 
-  // If replacement is empty, treat as FULL VOID (no new order needed)
-  if (replaceLines.length === 0) {
-    await voidOnly();
-    return;
-  }
-
-  // replacement path needs new order
-  if (!replaceNewId) return;
-
-  const reason = voidReason.trim();
-  if (reason.length < 3) {
+  if (voidReason.trim().length < 3) {
     alert("Please enter a void reason (at least 3 characters).");
     return;
   }
 
+  // ✅ If empty = VOID ONLY
+  const isVoidOnly = replaceLines.length === 0;
+
   const ok = window.confirm(
-    "Finalize replacement? This will VOID the old order and keep the new order as the replacement."
+    isVoidOnly
+      ? "Finalize VOID? This will VOID the old order. (No replacement order will be created.)"
+      : "Finalize replacement? This will VOID the old order and mark the new one as PAID."
   );
   if (!ok) return;
 
@@ -571,51 +589,38 @@ async function finalizeReplacement() {
     const ownerId = sess.session?.user?.id;
     if (!ownerId) throw new Error("Login required");
 
-    // 1) overwrite lines for new order (no draft; this IS the finalize)
-    const { error: delErr } = await supabase
-      .from("order_lines")
-      .delete()
-      .eq("order_id", replaceNewId);
-    if (delErr) throw new Error(delErr.message);
-
-    const payload = replaceLines.map((l) => ({
-      order_id: replaceNewId,
-      menu_item_id: l.menu_item_id,
-      qty: l.qty,
-      unit_price: l.unit_price,
-      line_total: l.unit_price * l.qty,
-    }));
-
-    const computedTotal = payload.reduce((sum, x) => sum + x.line_total, 0);
-
-    const { error: insErr } = await supabase.from("order_lines").insert(payload);
-    if (insErr) throw new Error(insErr.message);
-
-    // 2) update new order total (and status ONLY if your enum supports it)
-    // safest: leave status alone (likely already "NEW")
-    const { error: updNewErr } = await supabase
-      .from("orders")
-      .update({
-        total_amount: computedTotal,
-        // status: "NEW", // only set this if your enum includes NEW (it seems it does)
-      })
-      .eq("id", replaceNewId);
-    if (updNewErr) throw new Error(updNewErr.message);
-
-    // 3) old order -> VOIDED + link to new
-    const { error: updOldErr } = await supabase
+    // ✅ Always update old order -> VOIDED
+    const { error: e2 } = await supabase
       .from("orders")
       .update({
         status: "VOIDED",
         voided_at: new Date().toISOString(),
         voided_by: ownerId,
-        void_reason: reason,
-        replaced_by: replaceNewId,
+        void_reason: voidReason.trim(),
+        replaced_by: isVoidOnly ? null : replaceNewId,
       })
       .eq("id", replaceOldId);
-    if (updOldErr) throw new Error(updOldErr.message);
+    if (e2) throw new Error(e2.message);
 
-    alert("✅ Replacement finalized.");
+    if (isVoidOnly) {
+      // ✅ Delete the replacement draft order completely so no "extra active order" exists
+      await supabase.from("order_lines").delete().eq("order_id", replaceNewId);
+      await supabase.from("orders").delete().eq("id", replaceNewId);
+
+      alert("✅ Order voided.");
+    } else {
+      // ✅ Save lines + total first
+      // await saveReplacementDraft();
+
+      // ✅ New order -> PAID
+      const { error: e1 } = await supabase
+        .from("orders")
+        .update({ status: "PAID" })
+        .eq("id", replaceNewId);
+      if (e1) throw new Error(e1.message);
+
+      alert("✅ Replacement finalized.");
+    }
 
     // exit replace mode
     setReplaceMode(false);
