@@ -132,6 +132,24 @@ export default function OwnerDashboard() {
   const [loading, setLoading] = useState(true);
   
 
+  type ReplaceLine = {
+    id: string; // local id (menu_item_id)
+    menu_item_id: string;
+    name: string;
+    unit_price: number;
+    qty: number;
+  };
+
+  const [replaceMode, setReplaceMode] = useState(false);
+  const [replaceOldId, setReplaceOldId] = useState<string | null>(null);
+  const [replaceNewId, setReplaceNewId] = useState<string | null>(null);
+  const [voidReason, setVoidReason] = useState("");
+  const [replaceSaving, setReplaceSaving] = useState(false);
+  const [replaceLines, setReplaceLines] = useState<ReplaceLine[]>([]);
+  const [replaceBranchLabel, setReplaceBranchLabel] = useState<string>("");
+
+  const [menuAll, setMenuAll] = useState<{ id: string; name: string; price: number }[]>([]);
+
   // Live Updates
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshEverySec, setRefreshEverySec] = useState(1800);
@@ -377,6 +395,224 @@ export default function OwnerDashboard() {
       setLoading(false);
     }
   }
+
+ async function startVoidAndReplace(oldOrderId: string) {
+  const ok = window.confirm("Start VOID + REPLACE for this order?");
+  if (!ok) return;
+
+  setReplaceSaving(true);
+  try {
+    // old order
+    const { data: old, error: e1 } = await supabase
+      .from("orders")
+      .select("id, branch_id, payment_type, total_amount")
+      .eq("id", oldOrderId)
+      .single();
+    if (e1) throw new Error(e1.message);
+
+    // old lines + item names
+    const { data: lines, error: e2 } = await supabase
+      .from("order_lines")
+      .select("menu_item_id, qty, unit_price, line_total, menu_items(name)")
+      .eq("order_id", oldOrderId);
+    if (e2) throw new Error(e2.message);
+
+    // create new order (draft)
+    const { data: newOrder, error: e3 } = await supabase
+      .from("orders")
+      .insert({
+        branch_id: old.branch_id,
+        payment_type: old.payment_type,
+        total_amount: old.total_amount,
+        status: "DRAFT",
+        replaces: oldOrderId,
+      })
+      .select("id")
+      .single();
+    if (e3) throw new Error(e3.message);
+
+    // copy lines to new order
+    const newLinesDb = (lines ?? []).map((l: any) => ({
+      order_id: newOrder.id,
+      menu_item_id: l.menu_item_id,
+      qty: l.qty,
+      unit_price: l.unit_price,
+      line_total: l.line_total,
+    }));
+
+    if (newLinesDb.length > 0) {
+      const { error: e4 } = await supabase.from("order_lines").insert(newLinesDb);
+      if (e4) throw new Error(e4.message);
+    }
+
+    // editor state (client-side)
+    const editorLines: ReplaceLine[] = (lines ?? []).map((l: any) => ({
+      id: l.menu_item_id,
+      menu_item_id: l.menu_item_id,
+      name: l.menu_items?.name ?? "Unknown",
+      unit_price: Number(l.unit_price),
+      qty: Number(l.qty),
+    }));
+
+    setReplaceMode(true);
+    setReplaceOldId(oldOrderId);
+    setReplaceNewId(newOrder.id);
+    setReplaceLines(editorLines);
+    setVoidReason("");
+
+    // show branch label in editor
+    setReplaceBranchLabel(branchNameById.get(old.branch_id) ?? String(old.branch_id));
+  } catch (err: any) {
+    alert(err?.message ?? "Failed to start replacement");
+  } finally {
+    setReplaceSaving(false);
+  }
+}
+
+
+function repInc(menuItemId: string) {
+  setReplaceLines((prev) =>
+    prev.map((l) => (l.menu_item_id === menuItemId ? { ...l, qty: l.qty + 1 } : l))
+  );
+}
+
+function repDec(menuItemId: string) {
+  setReplaceLines((prev) =>
+    prev
+      .map((l) => (l.menu_item_id === menuItemId ? { ...l, qty: Math.max(1, l.qty - 1) } : l))
+  );
+}
+
+function repRemove(menuItemId: string) {
+  setReplaceLines((prev) => prev.filter((l) => l.menu_item_id !== menuItemId));
+}
+
+function repAdd(menuItemId: string) {
+  const it = menuAll.find((m) => m.id === menuItemId);
+  if (!it) return;
+
+  setReplaceLines((prev) => {
+    const existing = prev.find((l) => l.menu_item_id === menuItemId);
+    if (existing) return prev.map((l) => (l.menu_item_id === menuItemId ? { ...l, qty: l.qty + 1 } : l));
+    return [
+      ...prev,
+      { id: it.id, menu_item_id: it.id, name: it.name, unit_price: Number(it.price), qty: 1 },
+    ];
+  });
+}
+
+const replaceTotal = replaceLines.reduce((sum, l) => sum + l.unit_price * l.qty, 0);
+
+async function saveReplacementDraft() {
+  if (!replaceNewId) return;
+  setReplaceSaving(true);
+  try {
+    // 1) delete existing lines for new order
+    const { error: e1 } = await supabase.from("order_lines").delete().eq("order_id", replaceNewId);
+    if (e1) throw new Error(e1.message);
+
+    // 2) insert new lines
+    const payload = replaceLines.map((l) => ({
+      order_id: replaceNewId,
+      menu_item_id: l.menu_item_id,
+      qty: l.qty,
+      unit_price: l.unit_price,
+      line_total: l.unit_price * l.qty,
+    }));
+
+    if (payload.length > 0) {
+      const { error: e2 } = await supabase.from("order_lines").insert(payload);
+      if (e2) throw new Error(e2.message);
+    }
+
+    // 3) update order total
+    const { error: e3 } = await supabase
+      .from("orders")
+      .update({ total_amount: replaceTotal })
+      .eq("id", replaceNewId);
+    if (e3) throw new Error(e3.message);
+
+    alert("✅ Draft saved.");
+  } catch (err: any) {
+    alert(err?.message ?? "Save failed");
+  } finally {
+    setReplaceSaving(false);
+  }
+}
+
+async function finalizeReplacement() {
+  if (!replaceOldId || !replaceNewId) return;
+
+  if (voidReason.trim().length < 3) {
+    alert("Please enter a void reason (at least 3 characters).");
+    return;
+  }
+  if (replaceLines.length === 0) {
+    alert("Replacement cannot be empty. Add at least 1 item.");
+    return;
+  }
+
+  const ok = window.confirm("Finalize replacement? This will VOID the old order and mark the new one as PAID.");
+  if (!ok) return;
+
+  setReplaceSaving(true);
+  try {
+    const { data: sess } = await supabase.auth.getSession();
+    const ownerId = sess.session?.user?.id;
+    if (!ownerId) throw new Error("Login required");
+
+    // Always save draft before finalizing
+    await saveReplacementDraft();
+
+    // 1) new order -> PAID
+    const { error: e1 } = await supabase
+      .from("orders")
+      .update({ status: "PAID" })
+      .eq("id", replaceNewId);
+    if (e1) throw new Error(e1.message);
+
+    // 2) old order -> VOIDED
+    const { error: e2 } = await supabase
+      .from("orders")
+      .update({
+        status: "VOIDED",
+        voided_at: new Date().toISOString(),
+        voided_by: ownerId,
+        void_reason: voidReason.trim(),
+        replaced_by: replaceNewId,
+      })
+      .eq("id", replaceOldId);
+    if (e2) throw new Error(e2.message);
+
+    alert("✅ Replacement finalized.");
+
+    // exit replace mode
+    setReplaceMode(false);
+    setReplaceOldId(null);
+    setReplaceNewId(null);
+    setReplaceLines([]);
+    setVoidReason("");
+
+    await refreshAll();
+  } catch (err: any) {
+    alert(err?.message ?? "Finalize failed");
+  } finally {
+    setReplaceSaving(false);
+  }
+}
+
+
+function cancelReplacement() {
+  const ok = window.confirm("Discard replacement editor? (Draft order will remain as DRAFT unless you delete it manually.)");
+  if (!ok) return;
+
+  setReplaceMode(false);
+  setReplaceOldId(null);
+  setReplaceNewId(null);
+  setReplaceLines([]);
+  setVoidReason("");
+}
+
 
   useEffect(() => {
     refreshAll();
@@ -886,6 +1122,23 @@ export default function OwnerDashboard() {
                     Order ID: <span style={{ color: "#fff" }}>{selectedOrderId}</span>
                   </div>
 
+                  <button
+                    onClick={() => startVoidAndReplace(selectedOrderId)}
+                    disabled={replaceSaving}
+                    style={{
+                      width: "100%",
+                      marginBottom: 12,
+                      padding: 10,
+                      borderRadius: 12,
+                      border: "1px solid rgba(255,255,255,0.2)",
+                      fontWeight: 900,
+                      cursor: "pointer",
+                      opacity: replaceSaving ? 0.6 : 1,
+                      }}
+                  >
+                  VOID + REPLACE ORDER
+                  </button>
+
                   {orderLinesForSelectedOrder.length === 0 ? (
                     <div style={{ color: "#888" }}>No lines found.</div>
                   ) : (
@@ -912,6 +1165,64 @@ export default function OwnerDashboard() {
                       ))}
                     </div>
                   )}
+                  
+                  
+                  {replaceMode ? (
+                    <div style={{ marginTop: 16, borderTop: "1px solid rgba(255,255,255,0.12)", paddingTop: 12 }}>
+                      <div style={{ fontWeight: 900, marginBottom: 6 }}>Replacement Editor</div>
+
+                      <div style={{ display: "grid", gap: 8 }}>
+                        {replaceLines.map((l) => (
+                          <div key={l.menu_item_id}
+                            style={{
+                              border: "1px solid rgba(255,255,255,0.12)",
+                              borderRadius: 12,
+                              padding: 10,
+                              display: "grid",
+                              gridTemplateColumns: "1fr auto",
+                              gap: 10,
+                              alignItems: "center",
+                            }}
+                          >
+                            <div>
+                              <div style={{ fontWeight: 900 }}>{l.name}</div>
+                              <div style={{ color: "#aaa", fontSize: 12 }}>
+                                ₱{l.unit_price.toFixed(2)} × {l.qty} = ₱{(l.unit_price*l.qty).toFixed(2)}
+                              </div>
+                            </div>
+
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <button onClick={() => repDec(l.menu_item_id)}>−</button>
+                              <button onClick={() => repInc(l.menu_item_id)}>+</button>
+                              <button onClick={() => repRemove(l.menu_item_id)}>Remove</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div style={{ marginTop: 10, fontWeight: 900 }}>
+                        Total: ₱{replaceTotal.toFixed(2)}
+                      </div>
+
+                      <input
+                        value={voidReason}
+                        onChange={(e)=>setVoidReason(e.target.value)}
+                        placeholder="Void reason"
+                        style={{
+                          width:"100%",
+                          marginTop:10,
+                          padding:10,
+                          borderRadius:10
+                        }}
+                      />
+
+                      <div style={{ display:"flex", gap:10, marginTop:10 }}>
+                        <button onClick={saveReplacementDraft}>Save Draft</button>
+                        <button onClick={finalizeReplacement}>Finalize Replacement</button>
+                      </div>
+                    </div>
+                  ) : null}
+
                 </>
               )}
             </div>
