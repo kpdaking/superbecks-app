@@ -120,39 +120,38 @@ export default function CashierPage() {
 
       const totalAmount = Number(total.toFixed(2));
 
-      // Insert order header
-      const { data: order, error: orderErr } = await supabase
+          // Insert order header
+        const { data: order, error: orderErr } = await supabase
         .from("orders")
         .insert({
           branch_id: branchId,
-          created_by: userId,
+          created_by: user.id,          // ✅ use auth user id (uuid)
           payment_type: payment,
           status: "NEW",
-          total_amount: Number(totalAmount),
+          total_amount: totalAmount,
         })
         .select("id")
         .single();
 
-      if (orderErr) throw new Error(orderErr.message);
+        if (orderErr) throw new Error(orderErr.message);
 
-      // Insert order lines
-      const lines = cart.map((l) => {
-        const unitPrice = Number(l.price);         // number
-        const qty = Number(l.qty);                // number
-        const lineTotal = unitPrice * qty;        // number
+        // Insert order lines
+         const lines = cart.map((l) => {
+        const unitPrice = Number(l.price);
+        const qty = Number(l.qty);
+        const lineTotal = unitPrice * qty;
 
         return {
           order_id: order.id,
-          menu_item_id: Number(l.id),             // important if DB is bigint/int
-          qty,                                    // number
-          unit_price: unitPrice,                  // number
-          line_total: lineTotal,                  // number
-        };
-      });
+          menu_item_id: l.id,          // ✅ keep UUID string
+          qty,                         // int
+          unit_price: unitPrice,       // numeric
+          line_total: lineTotal,       // numeric
+         };
+         });
 
-      const { error: linesErr } = await supabase.from("order_lines").insert(lines);
-      if (linesErr) throw new Error(linesErr.message);
-
+const { error: linesErr } = await supabase.from("order_lines").insert(lines);
+if (linesErr) throw new Error(linesErr.message);
       alert("Order saved ✅");
       clear();
     } catch (e: any) {

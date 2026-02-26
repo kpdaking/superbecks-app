@@ -450,17 +450,25 @@ export default function OwnerDashboard() {
     if (e2) throw new Error(e2.message);
 
     // create new order (draft)
+    // get current user (owner)
+    const { data: sess } = await supabase.auth.getSession();
+    const ownerId = sess.session?.user?.id;
+    if (!ownerId) throw new Error("Login required");
+
     const { data: newOrder, error: e3 } = await supabase
-      .from("orders")
-      .insert({
-        branch_id: old.branch_id,
-        payment_type: old.payment_type,
-        total_amount: old.total_amount,
-        status: "DRAFT",
-        replaces: oldOrderId,
-      })
-      .select("id")
-      .single();
+    .from("orders")
+    .insert({
+    branch_id: old.branch_id,
+    created_by: ownerId,          // ✅ ADD THIS
+    payment_type: old.payment_type,
+    total_amount: old.total_amount,
+    status: "DRAFT",
+    replaces: oldOrderId,
+    })
+    .select("id")
+    .single();
+
+    
     if (e3) throw new Error(e3.message);
 
     // copy lines to new order
