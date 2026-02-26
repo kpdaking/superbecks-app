@@ -242,8 +242,14 @@ export default function OwnerDashboard() {
       return filteredOrders.filter((o) => o.status !== "VOIDED");
     }, [filteredOrders]);
 
+      // 3) Build set of valid order IDs for sales
+      const salesOrderIdSet = useMemo(() => {
+      return new Set(salesOrders.map((o) => o.id));
+      }, [salesOrders]);
+
+    // 4) Only include lines from non-voided orders
     const salesLines = useMemo(() => {
-      return lines.filter((l) => salesOrderIdSet.has(l.order_id));
+    return lines.filter((l) => salesOrderIdSet.has(l.order_id));
     }, [lines, salesOrderIdSet]);
 
 
