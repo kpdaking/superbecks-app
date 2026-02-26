@@ -120,18 +120,32 @@ export default function CashierPage() {
 
       const totalAmount = Number(total.toFixed(2));
 
-          // Insert order header
-        const { data: order, error: orderErr } = await supabase
-        .from("orders")
-        .insert({
-          branch_id: branchId,
-          created_by: user.id,          // ✅ use auth user id (uuid)
-          payment_type: payment,
-          status: "NEW",
-          total_amount: totalAmount,
-        })
-        .select("id")
-        .single();
+          // 🔎 BUILD PAYLOAD FIRST (tripwire)
+          const payload = {
+            branch_id: branchId,
+            created_by: user.id,   // always auth user
+            payment_type: payment,
+            status: "NEW",
+            total_amount: totalAmount,
+            // IMPORTANT: do NOT put order_no here yet
+          };
+
+          // 🔎 TRIPWIRE LOGS
+          console.log("=== ORDER PAYLOAD ===");
+          console.log(payload);
+          console.log("order_no exists?", Object.prototype.hasOwnProperty.call(payload, "order_no"));
+
+            // safely check without TypeScript complaining
+            const anyPayload = payload as any;
+            console.log("order_no value:", anyPayload.order_no);
+            console.log("typeof order_no:", typeof anyPayload.order_no);
+
+          // 🔎 INSERT
+          const { data: order, error: orderErr } = await supabase
+            .from("orders")
+            .insert(payload)
+            .select("id")
+            .single();
 
         if (orderErr) throw new Error(orderErr.message);
 
