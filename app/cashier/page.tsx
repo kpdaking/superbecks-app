@@ -128,7 +128,7 @@ export default function CashierPage() {
           created_by: userId,
           payment_type: payment,
           status: "NEW",
-          total_amount: totalAmount,
+          total_amount: Number(totalAmount),
         })
         .select("id")
         .single();
@@ -136,13 +136,19 @@ export default function CashierPage() {
       if (orderErr) throw new Error(orderErr.message);
 
       // Insert order lines
-      const lines = cart.map((l) => ({
-        order_id: order.id,
-        menu_item_id: l.id,
-        qty: l.qty,
-        unit_price: Number(l.price.toFixed(2)),
-        line_total: Number((l.price * l.qty).toFixed(2)),
-      }));
+      const lines = cart.map((l) => {
+        const unitPrice = Number(l.price);         // number
+        const qty = Number(l.qty);                // number
+        const lineTotal = unitPrice * qty;        // number
+
+        return {
+          order_id: order.id,
+          menu_item_id: Number(l.id),             // important if DB is bigint/int
+          qty,                                    // number
+          unit_price: unitPrice,                  // number
+          line_total: lineTotal,                  // number
+        };
+      });
 
       const { error: linesErr } = await supabase.from("order_lines").insert(lines);
       if (linesErr) throw new Error(linesErr.message);
