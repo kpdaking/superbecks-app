@@ -16,6 +16,10 @@ type Order = {
   payment_type: "CASH" | "GCASH";
   total_amount: number;
   status?: string | null;
+
+    // ✅ add these
+  order_no?: string | number | null;        // bigint comes back as number or string depending on config
+  business_date?: string | null;   // date as "YYYY-MM-DD"
 };
 
 type Line = {
@@ -366,7 +370,7 @@ export default function OwnerDashboard() {
     // orders
     const { data: o, error: oErr } = await supabase
       .from("orders")
-      .select("id,branch_id,created_at,payment_type,total_amount,status")
+      .select("id,branch_id,created_at,payment_type,total_amount,status,order_no,business_date")
       .gte("created_at", startUtc)
       .lt("created_at", endUtc);
 
@@ -1213,7 +1217,7 @@ function cancelReplacement() {
 
                                   {/* time + id */}
                                   <div style={{ color: "#aaa", fontSize: 12 }}>
-                                    {new Date(o.created_at).toLocaleString()} • {o.id.slice(0,8)}
+                                    {branchNameById.get(o.branch_id) ?? "Branch"} #{o.order_no ?? "—"}
                                   </div>
 
                                   {/* replacement reference */}

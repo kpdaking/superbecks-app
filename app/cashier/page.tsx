@@ -130,21 +130,12 @@ export default function CashierPage() {
             // IMPORTANT: do NOT put order_no here yet
           };
 
-          // 🔎 TRIPWIRE LOGS
-          console.log("=== ORDER PAYLOAD ===");
-          console.log(payload);
-          console.log("order_no exists?", Object.prototype.hasOwnProperty.call(payload, "order_no"));
-
-            // safely check without TypeScript complaining
-            const anyPayload = payload as any;
-            console.log("order_no value:", anyPayload.order_no);
-            console.log("typeof order_no:", typeof anyPayload.order_no);
-
+        
           // 🔎 INSERT
           const { data: order, error: orderErr } = await supabase
             .from("orders")
             .insert(payload)
-            .select("id")
+            .select("id, order_no, business_date")
             .single();
 
         if (orderErr) throw new Error(orderErr.message);
@@ -164,9 +155,9 @@ export default function CashierPage() {
          };
          });
 
-const { error: linesErr } = await supabase.from("order_lines").insert(lines);
-if (linesErr) throw new Error(linesErr.message);
-      alert("Order saved ✅");
+  const { error: linesErr } = await supabase.from("order_lines").insert(lines);
+  if (linesErr) throw new Error(linesErr.message);
+      alert(`Order #${order.order_no} saved ✅`);
       clear();
     } catch (e: any) {
       alert("Failed to save order: " + (e?.message || e.toString()));
