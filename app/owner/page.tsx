@@ -112,7 +112,7 @@ function phStartOfMonthYMD() {
 
 function fmtMoney(n: number) {
   return `₱${Number(n || 0).toFixed(2)}`;
-}w
+}
 
 function downloadTextFile(filename: string, text: string) {
   const blob = new Blob([text], { type: "text/csv;charset=utf-8;" });
