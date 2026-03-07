@@ -173,7 +173,9 @@ export default function InventoryTab() {
       if (prof.role !== "owner") throw new Error("Not an owner account");
 
       if (!menuItemId) throw new Error("Pick an item");
-      if (!qty || qty <= 0) throw new Error("Qty must be > 0");
+      if (!qty || (moveType !== "ADJUST" && qty <= 0)) {
+          throw new Error("Qty must be > 0");
+}
 
       // Build payload based on type
       const payload: any = {
