@@ -247,7 +247,7 @@ export default function OwnerDashboard() {
 
     // 2) Orders used for SALES computations (exclude VOIDED)
     const salesOrders = useMemo(() => {
-      return filteredOrders.filter((o) => o.status !== "VOIDED");
+      return filteredOrders.filter((o) => o.status !== "PAID");
     }, [filteredOrders]);
 
       // 3) Build set of valid order IDs for sales

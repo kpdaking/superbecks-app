@@ -125,7 +125,7 @@ export default function CashierPage() {
             branch_id: branchId,
             created_by: user.id,   // always auth user
             payment_type: payment,
-            status: "PAID",
+            status: "NEW",
             total_amount: totalAmount,
             // IMPORTANT: do NOT put order_no here yet
           };
@@ -157,8 +157,19 @@ export default function CashierPage() {
 
   const { error: linesErr } = await supabase.from("order_lines").insert(lines);
   if (linesErr) throw new Error(linesErr.message);
-      alert(`Order #${order.order_no} saved ✅`);
-      clear();
+
+  // ⭐ STEP #3 — mark order as PAID (this triggers inventory deduction)
+  const { error: payErr } = await supabase
+    .from("orders")
+    .update({ status: "PAID" })
+    .eq("id", order.id);
+
+  if (payErr) throw new Error(payErr.message);
+
+  alert(`Order #${order.order_no} saved ✅`);
+  clear();
+
+
     } catch (e: any) {
       alert("Failed to save order: " + (e?.message || e.toString()));
     } finally {
