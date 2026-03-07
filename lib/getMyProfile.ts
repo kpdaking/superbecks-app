@@ -12,7 +12,7 @@ export async function getMyProfile() {
   const { data: profile, error: profErr } = await supabase
     .from("profiles")
     .select("role, branch_id")
-    .eq("id", user.id)
+    .eq("user_id", user.id)
     .single();
 
   if (profErr) throw profErr;
