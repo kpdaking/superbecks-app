@@ -173,6 +173,11 @@ export default function InventoryTab() {
       if (prof.role !== "owner") throw new Error("Not an owner account");
 
       if (!menuItemId) throw new Error("Pick an item");
+      
+      if (!qty || Number(qty) === 0) {
+       throw new Error("Qty must not be 0");
+} 
+      
       if (!qty || (moveType !== "ADJUST" && qty <= 0)) {
           throw new Error("Qty must be > 0");
 }
@@ -202,10 +207,21 @@ export default function InventoryTab() {
 
       if (moveType === "ADJUST") {
         if (!toBranchId) throw new Error("Pick which branch to adjust");
-        // Convention: +qty adds, -qty subtracts
-        // UI-wise: you can allow negative numbers by letting qty be negative.
-        payload.from_branch_id = null;
-        payload.to_branch_id = toBranchId;
+        if (!qty || qty === 0) throw new Error("Qty must not be 0");
+
+        const absQty = Math.abs(Number(qty));
+
+        // negative adjust = subtract from branch
+        if (Number(qty) < 0) {
+          payload.qty = absQty;
+          payload.from_branch_id = toBranchId;
+          payload.to_branch_id = null;
+        } else {
+          // positive adjust = add to branch
+          payload.qty = absQty;
+          payload.from_branch_id = null;
+          payload.to_branch_id = toBranchId;
+        }
       }
 
       const { error } = await supabase.from("inventory_moves").insert(payload);
