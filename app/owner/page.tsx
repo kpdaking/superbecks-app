@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import "./ui.css";
 import { confirmAndLogout } from "@/lib/logout";
+import InventoryTab from "./InventoryTab";
+
 
 type Branch = { id: string; name: string };
 
@@ -110,7 +112,7 @@ function phStartOfMonthYMD() {
 
 function fmtMoney(n: number) {
   return `₱${Number(n || 0).toFixed(2)}`;
-}
+}w
 
 function downloadTextFile(filename: string, text: string) {
   const blob = new Blob([text], { type: "text/csv;charset=utf-8;" });
@@ -136,6 +138,7 @@ export default function OwnerDashboard() {
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(true);
   
+  const [tab, setTab] = useState<"dashboard" | "inventory">("dashboard");
 
   type ReplaceLine = {
     id: string; // local id (menu_item_id)
@@ -144,6 +147,7 @@ export default function OwnerDashboard() {
     unit_price: number;
     qty: number;
   };
+
 
   const [replaceMode, setReplaceMode] = useState(false);
   const [replaceOldId, setReplaceOldId] = useState<string | null>(null);
@@ -547,43 +551,7 @@ function repAdd(menuItemId: string) {
 
 const replaceTotal = replaceLines.reduce((sum, l) => sum + l.unit_price * l.qty, 0);
 
-// remove this save draft for now
-//async function saveReplacementDraft() {
-//  if (!replaceNewId) return;
-//  setReplaceSaving(true);
-//  try {
-//    // 1) delete existing lines for new order
-//    const { error: e1 } = await supabase.from("order_lines").delete().eq("order_id", replaceNewId);
-//    if (e1) throw new Error(e1.message);
 
-    // 2) insert new lines
-//    const payload = replaceLines.map((l) => ({
-//      order_id: replaceNewId,
-//      menu_item_id: l.menu_item_id,
-//      qty: l.qty,
-//      unit_price: l.unit_price,
-//      line_total: l.unit_price * l.qty,
-//    }));
-
-//    if (payload.length > 0) {
-//      const { error: e2 } = await supabase.from("order_lines").insert(payload);
-//      if (e2) throw new Error(e2.message);
-//    }
-
-    // 3) update order total
-//    const { error: e3 } = await supabase
-//      .from("orders")
-//      .update({ total_amount: replaceTotal })
-//      .eq("id", replaceNewId);
-//    if (e3) throw new Error(e3.message);
-
-//    alert("✅ Draft saved.");
-//  } catch (err: any) {
-//    alert(err?.message ?? "Save failed");
-//  } finally {
-//    setReplaceSaving(false);
-//  }
-// }
 
 async function finalizeReplacement() {
   if (!replaceOldId || !replaceNewId) return;
@@ -867,22 +835,55 @@ function cancelReplacement() {
 
       <div className="pill">Range: {startDate} → {endDate}</div>
 
-      {/* RIGHT SIDE (Logout Button) */}
+      
+
+    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
     <button
-      onClick={() => confirmAndLogout("Log out of Owner Dashboard?")}
+      onClick={() => setTab("dashboard")}
       style={{
       padding: "8px 14px",
       borderRadius: 999,
       border: "1px solid rgba(255,255,255,0.3)",
-      background: "rgba(0,0,0,0.25)",
+      background: tab === "dashboard" ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.25)",
       color: "#fff",
       fontWeight: 800,
-      cursor: "pointer"
-    }}
-  >
-    Logout
-  </button>
+      cursor: "pointer",
+     }}
+   >
+      Dashboard
+    </button>
+
+        <button
+        onClick={() => setTab("inventory")}
+        style={{
+          padding: "8px 14px",
+          borderRadius: 999,
+          border: "1px solid rgba(255,255,255,0.3)",
+          background: tab === "inventory" ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.25)",
+          color: "#fff",
+          fontWeight: 800,
+          cursor: "pointer",
+        }}
+        >
+        Inventory / Commissary
+      </button>
+
+        <button
+        onClick={() => confirmAndLogout("Log out of Owner Dashboard?")}
+        style={{
+          padding: "8px 14px",
+          borderRadius: 999,
+          border: "1px solid rgba(255,255,255,0.3)",
+          background: "rgba(0,0,0,0.25)",
+          color: "#fff",
+          fontWeight: 800,
+          cursor: "pointer",
+       }}
+     >
+       Logout
+      </button>
     </div>
+      </div>
 
     {/* Hero / Title */}
     <div className="hero">
@@ -900,7 +901,9 @@ function cancelReplacement() {
     </div>
 
     {/* Body */}
-    {!errorMsg ? (
+    {!errorMsg ? (  
+      
+      tab === "dashboard" ? (
       <>
         {/* Controls */}
         <div className="section">
@@ -1363,6 +1366,10 @@ function cancelReplacement() {
           </div>
         </div>
       </>
+      ) : (
+        <InventoryTab />
+      )
+
     ) : null}
 
     {/* ✅ THIS closing div is REQUIRED for <div className="page"> */}
