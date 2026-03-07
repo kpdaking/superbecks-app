@@ -125,7 +125,7 @@ export default function CashierPage() {
             branch_id: branchId,
             created_by: user.id,   // always auth user
             payment_type: payment,
-            status: "NEW",
+            status: "PAID",
             total_amount: totalAmount,
             // IMPORTANT: do NOT put order_no here yet
           };
