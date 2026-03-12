@@ -48,3 +48,46 @@ body{
               var(--bg);
   color: var(--text);
 }
+/* POS-style dropdown */
+
+.posSelect {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.15);
+
+  background: rgba(0,0,0,0.35);
+  color: #fff;
+
+  font-weight: 600;
+  font-size: 14px;
+
+  outline: none;
+  cursor: pointer;
+
+  transition: all 0.15s ease;
+}
+
+.posSelect:hover {
+  border-color: rgba(255,255,255,0.35);
+}
+
+.posSelect:focus {
+  border-color: #9d4edd;
+  box-shadow: 0 0 0 2px rgba(157,78,221,0.35);
+}
+
+/* dropdown list items */
+
+.posSelect option {
+  background: #1a1a1a;
+  color: #fff;
+  font-weight: 500;
+}
+
+.posSelect {
+  appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg fill='white' height='20' viewBox='0 0 20 20' width='20' xmlns='http://www.w3.org/2000/svg'><path d='M5 7l5 5 5-5z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}

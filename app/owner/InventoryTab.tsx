@@ -276,7 +276,12 @@ export default function InventoryTab() {
 
           <label>
             <div style={{ fontSize: 12, opacity: 0.7 }}>Item</div>
-            <select value={menuItemId} onChange={(e) => setMenuItemId(e.target.value)} style={{ width: "100%" }}>
+            <select
+                    className="posSelect"
+                    value={menuItemId}
+                    onChange={(e) => setMenuItemId(e.target.value)}
+                    style={{ width: "100%" }}
+                  >
               {menu.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name}
@@ -300,26 +305,40 @@ export default function InventoryTab() {
 
           <label>
             <div style={{ fontSize: 12, opacity: 0.7 }}>From</div>
-            <select value={fromBranchId} onChange={(e) => setFromBranchId(e.target.value)} style={{ width: "100%" }}>
+            <select
+                  className="posSelect"
+                  value={fromBranchId}
+                  onChange={(e) => setFromBranchId(e.target.value)}
+                  style={{ width: "100%" }}
+                >
               <option value="">—</option>
-              {branches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                  {b.is_commissary ? " (Commissary)" : ""}
-                </option>
+              {branches
+                  .filter((b) => !toBranchId || b.id !== toBranchId)
+                  .map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                      {b.is_commissary ? " (Commissary)" : ""}
+                    </option>
               ))}
             </select>
           </label>
 
           <label>
             <div style={{ fontSize: 12, opacity: 0.7 }}>To</div>
-            <select value={toBranchId} onChange={(e) => setToBranchId(e.target.value)} style={{ width: "100%" }}>
+            <select
+                  className="posSelect"
+                  value={toBranchId}
+                  onChange={(e) => setToBranchId(e.target.value)}
+                  style={{ width: "100%" }}
+                >
               <option value="">—</option>
-              {branches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                  {b.is_commissary ? " (Commissary)" : ""}
-                </option>
+               {branches
+                .filter((b) => !fromBranchId || b.id !== fromBranchId)
+                .map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                    {b.is_commissary ? " (Commissary)" : ""}
+                  </option>
               ))}
             </select>
           </label>
