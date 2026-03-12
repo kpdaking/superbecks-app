@@ -267,7 +267,12 @@ export default function InventoryTab() {
         <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
           <label>
             <div style={{ fontSize: 12, opacity: 0.7 }}>Type</div>
-            <select value={moveType} onChange={(e) => setMoveType(e.target.value as any)} style={{ width: "100%" }}>
+            <select
+                className="posSelect"
+                value={moveType}
+                onChange={(e) => setMoveType(e.target.value as any)}
+                style={{ width: "100%" }}
+              >
               <option value="RECEIPT">RECEIPT (Add to Commissary)</option>
               <option value="TRANSFER">TRANSFER (Commissary → Branch)</option>
               <option value="ADJUST">ADJUST (Manual +/-)</option>
