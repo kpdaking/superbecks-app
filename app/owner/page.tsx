@@ -239,15 +239,18 @@ export default function OwnerDashboard() {
 
     // 1) Orders list shown in UI (can include VOIDED)
     const filteredOrders = useMemo(() => {
-      if (!selectedBranchId) return orders;
-      return orders
+      const valid = orders.filter(o => o.status === "PAID" || o.status === "VOIDED");
+
+      if (!selectedBranchId) return valid;
+
+      return valid
         .filter((o) => o.branch_id === selectedBranchId)
         .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
     }, [orders, selectedBranchId]);
 
     // 2) Orders used for SALES computations (exclude VOIDED)
     const salesOrders = useMemo(() => {
-      return filteredOrders.filter((o) => o.status !== "PAID");
+      return filteredOrders.filter((o) => o.status === "PAID");
     }, [filteredOrders]);
 
       // 3) Build set of valid order IDs for sales
