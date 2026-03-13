@@ -160,11 +160,19 @@ export default function CashierPage() {
 
   // ⭐ STEP #3 — mark order as PAID (this triggers inventory deduction)
   const { error: payErr } = await supabase
-    .from("orders")
-    .update({ status: "PAID" })
-    .eq("id", order.id);
+  .from("orders")
+  .update({ status: "PAID" })
+  .eq("id", order.id);
 
-  if (payErr) throw new Error(payErr.message);
+  if (payErr) {
+  // rollback order_lines first
+  await supabase.from("order_lines").delete().eq("order_id", order.id);
+
+  // rollback order header
+  await supabase.from("orders").delete().eq("id", order.id);
+
+  throw new Error(payErr.message);
+  }
 
   alert(`Order #${order.order_no} saved ✅`);
   clear();

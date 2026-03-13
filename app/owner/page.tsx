@@ -342,6 +342,7 @@ export default function OwnerDashboard() {
     const { data: o, error: oErr } = await supabase
       .from("orders")
       .select("id,branch_id,created_at,payment_type,total_amount,status")
+      .eq("status", "PAID")
       .gte("created_at", startUtc)
       .lt("created_at", endUtc);
 
