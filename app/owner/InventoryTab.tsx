@@ -45,6 +45,8 @@ export default function InventoryTab() {
   const [onhand, setOnhand] = useState<OnhandRow[]>([]);
   const [moves, setMoves] = useState<MoveRow[]>([]);
 
+  
+
   // forms
   const [moveType, setMoveType] = useState<"RECEIPT" | "TRANSFER" | "ADJUST">("RECEIPT");
   const [fromBranchId, setFromBranchId] = useState<string>("");
@@ -250,6 +252,32 @@ export default function InventoryTab() {
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [onhand]);
 
+
+    const LOW_STOCK_THRESHOLD = 10;
+    const TARGET_STOCK = 30;
+
+    const lowStockCommissary = useMemo(() => {
+      return onhand
+        .filter((r) => {
+          const branch = branches.find((b) => b.id === r.branch_id);
+          return branch?.is_commissary && Number(r.on_hand || 0) <= LOW_STOCK_THRESHOLD;
+        })
+        .sort((a, b) => Number(a.on_hand || 0) - Number(b.on_hand || 0));
+    }, [onhand, branches]);
+
+    const lowStockBranches = useMemo(() => {
+      return onhand
+        .filter((r) => {
+          const branch = branches.find((b) => b.id === r.branch_id);
+          return !branch?.is_commissary && Number(r.on_hand || 0) <= LOW_STOCK_THRESHOLD;
+        })
+        .sort((a, b) => Number(a.on_hand || 0) - Number(b.on_hand || 0));
+    }, [onhand, branches]);
+
+  const showMoves = false;
+
+
+
   if (loading) return <div style={{ padding: 16 }}>Loading inventory…</div>;
 
   return (
@@ -360,6 +388,76 @@ export default function InventoryTab() {
         </div>
       </div>
 
+        {/* LOW STOCK ALERTS */}
+        <div style={{ border: "1px solid #333", borderRadius: 12, padding: 12 }}>
+          <div style={{ fontWeight: 700, marginBottom: 10 }}>Low Stock Alerts</div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            {/* Commissary */}
+            <div>
+              <div style={{ fontWeight: 800, marginBottom: 8 }}>Commissary</div>
+              {lowStockCommissary.length === 0 ? (
+                <div style={{ color: "#888" }}>No low-stock commissary items.</div>
+              ) : (
+                <div style={{ display: "grid", gap: 8 }}>
+                  {lowStockCommissary.map((r) => (
+                    <div
+                      key={`comm-${r.branch_id}-${r.menu_item_id}`}
+                      style={{
+                        border: "1px solid rgba(255,255,255,0.12)",
+                        borderRadius: 12,
+                        padding: 10,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        background: "rgba(255, 77, 79, 0.08)",
+                      }}
+                    >
+                      <span>{r.item_name}</span>
+                      <strong>{Number(r.on_hand || 0)} left</strong>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Branches */}
+            <div>
+              <div style={{ fontWeight: 800, marginBottom: 8 }}>Branches</div>
+              {lowStockBranches.length === 0 ? (
+                <div style={{ color: "#888" }}>No low-stock branch items.</div>
+              ) : (
+                <div style={{ display: "grid", gap: 8 }}>
+                  {lowStockBranches.map((r) => (
+                    <div
+                      key={`branch-${r.branch_id}-${r.menu_item_id}`}
+                      style={{
+                        border: "1px solid rgba(255,255,255,0.12)",
+                        borderRadius: 12,
+                        padding: 10,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        background: "rgba(255, 179, 0, 0.08)",
+                      }}
+                    >
+                      <div>
+                        <div>{r.item_name}</div>
+                        <div style={{ fontSize: 12, color: "#bbb" }}>{r.branch_name}</div>
+                      </div>
+
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontWeight: 900 }}>{Number(r.on_hand || 0)} left</div>
+                        <div style={{ fontSize: 12, color: "#bbb" }}>
+                          Suggest +{Math.max(TARGET_STOCK - Number(r.on_hand || 0), 0)}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
       {/* CURRENT STOCK */}
       <div style={{ border: "1px solid #333", borderRadius: 12, padding: 12 }}>
         <div style={{ fontWeight: 700, marginBottom: 8 }}>Current Stock (inventory_onhand)</div>
@@ -368,60 +466,74 @@ export default function InventoryTab() {
           <div key={branchName} style={{ marginBottom: 14 }}>
             <div style={{ fontWeight: 700, marginBottom: 6 }}>{branchName}</div>
             <div style={{ display: "grid", gap: 6 }}>
-              {rows.map((r) => (
-                <div
-                  key={`${r.branch_id}-${r.menu_item_id}`}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    borderBottom: "1px dashed #333",
-                    paddingBottom: 4,
-                  }}
-                >
-                  <span>{r.item_name}</span>
-                  <span style={{ fontWeight: 700 }}>{numberOrZero(r.on_hand)}</span>
-                </div>
-              ))}
+              {rows.map((r) => {
+                  const stock = Number(r.on_hand || 0);
+                  const stockColor =
+                    stock <= 10 ? "#ff8a8a" :
+                    stock <= 20 ? "#ffd166" :
+                    "#fff";
+
+                  return (
+                    <div
+                      key={`${r.branch_id}-${r.menu_item_id}`}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        borderBottom: "1px dashed #333",
+                        paddingBottom: 4,
+                      }}
+                    >
+                      <span>{r.item_name}</span>
+                      <span style={{ fontWeight: 700, color: stockColor }}>{stock}</span>
+                    </div>
+                  );
+                })}
             </div>
           </div>
         ))}
       </div>
 
-      {/* MOVEMENTS */}
-      <div style={{ border: "1px solid #333", borderRadius: 12, padding: 12 }}>
-        <div style={{ fontWeight: 700, marginBottom: 8 }}>Movements (inventory_moves) — latest 200</div>
+   
 
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ textAlign: "left" }}>
-                <th style={{ borderBottom: "1px solid #333", padding: 6 }}>Time</th>
-                <th style={{ borderBottom: "1px solid #333", padding: 6 }}>Type</th>
-                <th style={{ borderBottom: "1px solid #333", padding: 6 }}>From</th>
-                <th style={{ borderBottom: "1px solid #333", padding: 6 }}>To</th>
-                <th style={{ borderBottom: "1px solid #333", padding: 6 }}>Item</th>
-                <th style={{ borderBottom: "1px solid #333", padding: 6 }}>Qty</th>
-                <th style={{ borderBottom: "1px solid #333", padding: 6 }}>Reason</th>
-              </tr>
-            </thead>
-            <tbody>
-              {moves.map((m) => (
-                <tr key={m.id}>
-                  <td style={{ borderBottom: "1px solid #222", padding: 6 }}>
-                    {new Date(m.created_at).toLocaleString()}
-                  </td>
-                  <td style={{ borderBottom: "1px solid #222", padding: 6 }}>{m.move_type}</td>
-                  <td style={{ borderBottom: "1px solid #222", padding: 6 }}>{m.from_branch_name}</td>
-                  <td style={{ borderBottom: "1px solid #222", padding: 6 }}>{m.to_branch_name}</td>
-                  <td style={{ borderBottom: "1px solid #222", padding: 6 }}>{m.item_name}</td>
-                  <td style={{ borderBottom: "1px solid #222", padding: 6, fontWeight: 700 }}>{m.qty}</td>
-                  <td style={{ borderBottom: "1px solid #222", padding: 6 }}>{m.reason ?? ""}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+    
+      {/* MOVEMENTS */}
+     {showMoves && (
+          <div style={{ border: "1px solid #333", borderRadius: 12, padding: 12 }}>
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>Movements (inventory_moves) — latest 200</div>
+
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ textAlign: "left" }}>
+                    <th style={{ borderBottom: "1px solid #333", padding: 6 }}>Time</th>
+                    <th style={{ borderBottom: "1px solid #333", padding: 6 }}>Type</th>
+                    <th style={{ borderBottom: "1px solid #333", padding: 6 }}>From</th>
+                    <th style={{ borderBottom: "1px solid #333", padding: 6 }}>To</th>
+                    <th style={{ borderBottom: "1px solid #333", padding: 6 }}>Item</th>
+                    <th style={{ borderBottom: "1px solid #333", padding: 6 }}>Qty</th>
+                    <th style={{ borderBottom: "1px solid #333", padding: 6 }}>Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {moves.map((m) => (
+                    <tr key={m.id}>
+                      <td style={{ borderBottom: "1px solid #222", padding: 6 }}>
+                        {new Date(m.created_at).toLocaleString()}
+                      </td>
+                      <td style={{ borderBottom: "1px solid #222", padding: 6 }}>{m.move_type}</td>
+                      <td style={{ borderBottom: "1px solid #222", padding: 6 }}>{m.from_branch_name}</td>
+                      <td style={{ borderBottom: "1px solid #222", padding: 6 }}>{m.to_branch_name}</td>
+                      <td style={{ borderBottom: "1px solid #222", padding: 6 }}>{m.item_name}</td>
+                      <td style={{ borderBottom: "1px solid #222", padding: 6, fontWeight: 700 }}>{m.qty}</td>
+                      <td style={{ borderBottom: "1px solid #222", padding: 6 }}>{m.reason ?? ""}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+    </div> 
+    
   );
 }
