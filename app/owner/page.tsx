@@ -6,6 +6,7 @@ import { supabase } from "../../lib/supabase";
 import "./ui.css";
 import { confirmAndLogout } from "@/lib/logout";
 import InventoryTab from "./InventoryTab";
+import MenuTab from "./MenuTab";
 
 
 type Branch = { id: string; name: string };
@@ -138,7 +139,7 @@ export default function OwnerDashboard() {
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(true);
   
-  const [tab, setTab] = useState<"dashboard" | "inventory">("dashboard");
+ const [tab, setTab] = useState<"dashboard" | "inventory" | "menu">("dashboard");
 
   type ReplaceLine = {
     id: string; // local id (menu_item_id)
@@ -842,6 +843,21 @@ function cancelReplacement() {
       
 
     <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+      <button
+        onClick={() => setTab("menu")}
+        style={{
+          padding: "8px 14px",
+          borderRadius: 999,
+          border: "1px solid rgba(255,255,255,0.3)",
+          background: tab === "menu" ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.25)",
+          color: "#fff",
+          fontWeight: 800,
+          cursor: "pointer"
+        }}
+      >
+        Menu
+      </button>
+
     <button
       onClick={() => setTab("dashboard")}
       style={{
@@ -883,6 +899,8 @@ function cancelReplacement() {
           fontWeight: 800,
           cursor: "pointer",
        }}
+
+       
      >
        Logout
       </button>
@@ -1370,12 +1388,12 @@ function cancelReplacement() {
           </div>
         </div>
       </>
-      ) : (
-        <InventoryTab />
-      )
-
-    ) : null}
-
+     ) : tab === "inventory" ? (
+          <InventoryTab />
+        ) : (
+          <MenuTab />
+        )
+      ) : null}
     {/* ✅ THIS closing div is REQUIRED for <div className="page"> */}
   </div>
 );
