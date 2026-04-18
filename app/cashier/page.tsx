@@ -12,6 +12,7 @@ type MenuItem = {
   name: string;
   category: string | null;
   price: number;
+  is_active?: boolean;
 };
 
 type CartLine = {
@@ -58,7 +59,7 @@ export default function CashierPage() {
 
         const { data, error } = await supabase
           .from("menu_items")
-          .select("id,name,category,price")
+          .select("id,name,category,price,is_active")
           .eq("is_active", true)
           .order("category", { ascending: true })
           .order("name", { ascending: true });
