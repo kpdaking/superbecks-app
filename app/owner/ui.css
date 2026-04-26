@@ -118,3 +118,35 @@
   font-weight:900;
 }
 
+.menuSaveBtn {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.menuSaveBtn:hover {
+  background: rgba(157, 78, 221, 0.22);
+  border-color: rgba(157, 78, 221, 0.75);
+  box-shadow: 0 0 0 2px rgba(157, 78, 221, 0.18);
+}
+
+.menuSaveBtnHot {
+  background: rgba(255, 193, 7, 0.18);
+  border-color: rgba(255, 193, 7, 0.85);
+  box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.18);
+}
+
+.menuSaveBtnHot:hover {
+  background: rgba(255, 193, 7, 0.28);
+}
+
+.menuSaveBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}

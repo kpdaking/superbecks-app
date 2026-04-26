@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { getMyProfile } from "@/lib/getMyProfile";
+
 
 type MenuRow = {
   id: string;
@@ -22,6 +23,8 @@ export default function MenuTab() {
   const [newPrice, setNewPrice] = useState<number>(150);
   const [newActive, setNewActive] = useState(true);
   const [adding, setAdding] = useState(false);
+  const [originalRows, setOriginalRows] = useState<MenuRow[]>([]);
+  const [savingAll, setSavingAll] = useState(false);
 
   async function loadMenu() {
     setLoading(true);
@@ -38,7 +41,13 @@ export default function MenuTab() {
 
       if (error) throw new Error(error.message);
 
-      setRows((data ?? []) as MenuRow[]);
+
+        const loaded = (data ?? []) as MenuRow[];
+        setRows(loaded);
+        setOriginalRows(loaded);
+
+      
+      
     } catch (e: any) {
       setErrorMsg(e?.message ?? "Failed to load menu");
     } finally {
@@ -56,13 +65,33 @@ export default function MenuTab() {
     );
   }
 
-  async function saveRow(row: MenuRow) {
-  const ok = window.confirm(`Save changes to "${row.name}"?`);
+const hasUnsavedChanges = useMemo(() => {
+  return JSON.stringify(rows) !== JSON.stringify(originalRows);
+}, [rows, originalRows]);
+
+
+async function saveAllRows() {
+  if (!hasUnsavedChanges) return;
+
+  const ok = window.confirm("Are you sure you want to save all menu changes?");
   if (!ok) return;
 
-  setSavingId(row.id);
+  setSavingAll(true);
   setErrorMsg("");
+
   try {
+    for (const row of rows) {
+      const original = originalRows.find((r) => r.id === row.id);
+      if (!original) continue;
+
+      const changed =
+        row.name !== original.name ||
+        row.category !== original.category ||
+        Number(row.price) !== Number(original.price) ||
+        row.is_active !== original.is_active;
+
+      if (!changed) continue;
+
       const { error } = await supabase
         .from("menu_items")
         .update({
@@ -74,13 +103,19 @@ export default function MenuTab() {
         .eq("id", row.id);
 
       if (error) throw new Error(error.message);
-    } catch (e: any) {
-      setErrorMsg(e?.message ?? "Failed to save menu item");
-    } finally {
-      setSavingId(null);
     }
-  }
 
+    setOriginalRows(rows);
+    alert("Menu changes saved ✅");
+  } catch (e: any) {
+    setErrorMsg(e?.message ?? "Failed to save menu changes");
+  } finally {
+    setSavingAll(false);
+  }
+}
+
+
+ 
 
     async function addMenuItem() {
         setErrorMsg("");
@@ -141,7 +176,17 @@ export default function MenuTab() {
       <div style={{ border: "1px solid #333", borderRadius: 12, padding: 12 }}>
         <div style={{ fontWeight: 700, marginBottom: 8 }}>Menu Management</div>
 
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <div style={{ fontWeight: 700 }}>Menu Management</div>
 
+                <button
+                  onClick={saveAllRows}
+                  disabled={!hasUnsavedChanges || savingAll}
+                  className={hasUnsavedChanges ? "menuSaveBtn menuSaveBtnHot" : "menuSaveBtn"}
+                >
+                  {savingAll ? "Saving..." : "Save All Changes"}
+                </button>
+              </div>
         
             <div
                 style={{
@@ -212,7 +257,7 @@ export default function MenuTab() {
                 <th style={{ padding: 8, borderBottom: "1px solid #333" }}>Category</th>
                 <th style={{ padding: 8, borderBottom: "1px solid #333" }}>Price</th>
                 <th style={{ padding: 8, borderBottom: "1px solid #333" }}>Active</th>
-                <th style={{ padding: 8, borderBottom: "1px solid #333" }}>Action</th>
+                
               </tr>
             </thead>
             <tbody>
@@ -256,11 +301,7 @@ export default function MenuTab() {
                     />
                   </td>
 
-                  <td style={{ padding: 8, borderBottom: "1px solid #222" }}>
-                    <button onClick={() => saveRow(r)} disabled={savingId === r.id}>
-                      {savingId === r.id ? "Saving..." : "Save"}
-                    </button>
-                  </td>
+                  
                 </tr>
               ))}
             </tbody>
